@@ -33,8 +33,8 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 
-import ServerSide.Message;
 import Utils.FileChecking;
+import Utils.Message;
 import Utils.Sounds;
 
 public class Client {
@@ -56,18 +56,13 @@ public class Client {
 	private JButton butt;
 	private JScrollPane scroll;
 	
-	private static int SERVER_PORT;
-	private static String SERVER_IP;
-	
-	public static void main(String[] args) {
-		Client c1 = new Client("127.0.0.1", 44444);
-		c1.runClient();
-	}
+	private int serverPort;
+	private String serverIP;
 	
 	public Client(String serverIP, int serverPort) {
 		boolean hasSoundFiles = FileChecking.soundFilesExist();
-		this.SERVER_IP = serverIP;
-		this.SERVER_PORT = serverPort;
+		this.serverIP = serverIP;
+		this.serverPort = serverPort;
 		
 		initGUI(hasSoundFiles);
 		
@@ -106,11 +101,11 @@ public class Client {
 //	}
 	
 	private void connectToServer() throws IOException {
-		InetAddress address = InetAddress.getByName(SERVER_IP);
+		InetAddress address = InetAddress.getByName(serverIP);
 		System.out.println("Address = " + address);
 		
 		try{	
-			socket = new Socket(address, SERVER_PORT);
+			socket = new Socket(address, serverPort);
 			System.out.println("Socket = " + socket);
 		} catch(ConnectException e) {
 			JOptionPane.showMessageDialog(null, "Error contacting the server");
@@ -242,9 +237,8 @@ public class Client {
 				inT = socket.getInputStream();
 			} catch (IOException ex) {
 				System.out.println("Can't get socket input stream.");
+				System.exit(1);
 			}
-			
-			byte[] bytes = new byte[16*1024];
 			
 			// Ask for files and receive ok
 	    	System.out.println("Asking for the sound files");
@@ -273,25 +267,18 @@ public class Client {
 			} catch (FileNotFoundException ex) {
 				System.out.println("File not found.");
 			}
-	    	
+	    		
 	        try {
+	        	byte[] bytes = new byte[16*1024];
 	        	int count, total = 0;
 	        	while (total < length) {
 	        		count = inT.read(bytes);
-	        		System.out.println("count=" + count);
 	        		total += count;
 	        		outT.write(bytes, 0, count);
-	        		System.out.println("total=" + total);
 	        	}
 	        	
 	        	// Received the file, now preparing the next before asking for it
-	        	myFile = new File(System.getenv("APPDATA") + "/tittiesChat/notification.wav");
-	        	try {
-	        		outT = new FileOutputStream(myFile);
-	        	} catch (FileNotFoundException ex) {
-	        		System.out.println("File not found. ");
-	        	}
-	        	bytes = new byte[16 * 1024];
+	        	
 	        	
 	        	// After preparing, send ok to ask for it and receive ok with byte number
 	        	System.out.println("Received the file, sending ok");
@@ -308,6 +295,14 @@ public class Client {
 					System.exit(2);
 		    	}
 		    	
+		    	myFile = new File(System.getenv("APPDATA") + "/tittiesChat/" + ok.getMessage());
+	        	try {
+	        		outT = new FileOutputStream(myFile);
+	        	} catch (FileNotFoundException ex) {
+	        		System.out.println("File not found. ");
+	        	}
+	        	bytes = new byte[16 * 1024];
+		    	
 		    	// Receiving the second file
 		    	length = ok.getByteNum();
 		    	System.out.println("length=" + length);
@@ -315,10 +310,8 @@ public class Client {
 	        	total = 0;
 	        	while (total < length) {
 	        		count = inT.read(bytes);
-	        		System.out.println("count=" + count);
 	        		total += count;
 	        		outT.write(bytes, 0, count);
-	        		System.out.println("total=" + total);
 	        	}
 	        	
 	        	// received both files, sending ok and moving on

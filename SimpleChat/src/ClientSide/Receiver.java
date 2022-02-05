@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.SocketException;
 
-import ServerSide.Message;
+import Utils.Message;
 import Utils.Sounds;
 
 public class Receiver extends Thread {

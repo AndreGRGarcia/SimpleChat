@@ -14,7 +14,7 @@ import javax.swing.JTextArea;
 
 public class Server {
 	
-	public static int PORT;
+	public int port;
 	private ArrayList<SSSender> list = new ArrayList<>();
 	private boolean letMoreJoin = true;
 	
@@ -23,22 +23,16 @@ public class Server {
 	private JScrollPane scroll;
 	private String filesLocation;
 	
-	public static void main(String[] args) {
-		String filesLocation = "Sounds";
-		Server server = new Server(filesLocation, 44444);
-		server.startServing();
-	}
-	
 	public Server(String filesLocation, int port) {
 		this.filesLocation = filesLocation;
-		this.PORT = port;
+		this.port = port;
 		initGUI();
 	}
 	
 	public void startServing() {
 		try {
 		//openPort();
-		ServerSocket s = new ServerSocket(PORT);
+		ServerSocket s = new ServerSocket(port);
 		writeOnScreen("Launched ServerSocket: " + s);
 		int id = 1;
 		new Thread() { // listener for server shutdown via console

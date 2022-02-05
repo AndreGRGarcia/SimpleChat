@@ -6,6 +6,8 @@ import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.net.SocketException;
 
+import Utils.Message;
+
 public class SSReceiver extends Thread {
 	
 	private Server server;

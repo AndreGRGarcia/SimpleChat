@@ -9,6 +9,8 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.Socket;
 
+import Utils.Message;
+
 public class SSSender {
 	
 	private Server server;
