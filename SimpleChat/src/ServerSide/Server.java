@@ -14,7 +14,7 @@ import javax.swing.JTextArea;
 
 public class Server {
 	
-	public static final int PORT = 44444;
+	public static int PORT;
 	private ArrayList<SSSender> list = new ArrayList<>();
 	private boolean letMoreJoin = true;
 	
@@ -25,12 +25,13 @@ public class Server {
 	
 	public static void main(String[] args) {
 		String filesLocation = "Sounds";
-		Server server = new Server(filesLocation);
+		Server server = new Server(filesLocation, 44444);
 		server.startServing();
 	}
 	
-	public Server(String filesLocation) {
+	public Server(String filesLocation, int port) {
 		this.filesLocation = filesLocation;
+		this.PORT = port;
 		initGUI();
 	}
 	

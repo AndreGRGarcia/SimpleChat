@@ -56,16 +56,19 @@ public class Client {
 	private JButton butt;
 	private JScrollPane scroll;
 	
-	private static final int PORT = 44444;
+	private static int SERVER_PORT;
+	private static String SERVER_IP;
 	
 	public static void main(String[] args) {
-		Client c1 = new Client();
+		Client c1 = new Client("127.0.0.1", 44444);
 		c1.runClient();
 	}
 	
-	public Client() {
+	public Client(String serverIP, int serverPort) {
 		boolean hasSoundFiles = FileChecking.soundFilesExist();
-
+		this.SERVER_IP = serverIP;
+		this.SERVER_PORT = serverPort;
+		
 		initGUI(hasSoundFiles);
 		
 		Sounds.playSound("startup");
@@ -103,11 +106,11 @@ public class Client {
 //	}
 	
 	private void connectToServer() throws IOException {
-		InetAddress endereco = InetAddress.getByName("127.0.0.1");
-		System.out.println("Endereço = " + endereco);
+		InetAddress address = InetAddress.getByName(SERVER_IP);
+		System.out.println("Address = " + address);
 		
 		try{	
-			socket = new Socket(endereco, PORT);
+			socket = new Socket(address, SERVER_PORT);
 			System.out.println("Socket = " + socket);
 		} catch(ConnectException e) {
 			JOptionPane.showMessageDialog(null, "Error contacting the server");
