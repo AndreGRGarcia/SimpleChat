@@ -1,7 +1,7 @@
 # SimpleChat
 A chat application made with java and the swing framework.
 
-##### To run this code:
+#### To run this code:
 
 1. Run the main method that is on the Server.java file to start the server (a window with some text should appear). Don't forget to pass the path of the directory with the needed sound files to the server object.
 2. After you can run the main on the Client.java file, passing the IP or url of the server as the Client object argument. You can run multiple instances of the client.
