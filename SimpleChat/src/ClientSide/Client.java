@@ -46,20 +46,23 @@ public class Client {
 	private Receiver receiver;
 	
 	private JFrame frame;
-	private JPanel panel;
-	private JPanel southP;
-	private JPanel northP;
-	private JLabel userL;
+	private JPanel mainPanel;
+	private JPanel southPanel;
+	private JPanel northPanel;
+	private JPanel labelReconnectPanel;
+	private JLabel userLabel;
 	private JTextField userTF;
-	private JTextArea ta;
-	private JTextField tf;
-	private JButton butt;
+	private JTextArea chatTextArea;
+	private JTextField inputTextField;
+	private JButton sendButton;
+	private JButton reconnectButton;
 	private JScrollPane scroll;
+	private boolean isReconnecting;
 	
 	private int serverPort;
 	private String serverIP;
 	
-	public Client(String serverIP, int serverPort) {
+	public Client(String serverIP, int serverPort) { // TODO take care of connection exceptions and error cases
 		boolean hasSoundFiles = FileChecking.soundFilesExist();
 		this.serverIP = serverIP;
 		this.serverPort = serverPort;
@@ -70,23 +73,38 @@ public class Client {
 	}
 
 	public void runClient() {
-		try {
-			if(socket == null)
+		if(socket == null) {
+			try {
+				printOnApp("Connecting to the server...");
 				connectToServer();
-			
-			sender = new Sender(objOut);
-			
-			receiver = new Receiver(this, objIn);
-			receiver.start();
-			
-			//sendMessages();
-		} catch (IOException e) {
-			e.printStackTrace();
+				runHelpers();	
+			} catch(IOException e) {
+				JOptionPane.showMessageDialog(null, "Error connecting to the server");
+				System.out.println("Error contacting the server");
+				printOnApp("Couldn't connect to the server");
+			}	
 		}
 	}
 	
+	public void runHelpers() {
+		sender = new Sender(objOut);
+		
+		receiver = new Receiver(this, objIn);
+		receiver.start();
+	}
+	
+	public void restartHelpers() throws IOException {
+		sender = new Sender(objOut);
+		
+		if(receiver != null) {
+			receiver.closeObjIn();
+		}
+		receiver = new Receiver(this, objIn);
+		receiver.start();
+	}
+	
 	public void printOnApp(String msg) {
-		ta.setText(ta.getText() + msg + '\n');
+		chatTextArea.setText(chatTextArea.getText() + msg + '\n');
 		scrollDown();
 	}
 	
@@ -100,18 +118,12 @@ public class Client {
 //		s.close();
 //	}
 	
-	private void connectToServer() throws IOException {
+	private void connectToServer() throws IOException {	
 		InetAddress address = InetAddress.getByName(serverIP);
-		System.out.println("Address = " + address);
+		System.out.println("Address = " + address + ", Port = " + serverPort);
 		
-		try{	
-			socket = new Socket(address, serverPort);
-			System.out.println("Socket = " + socket);
-		} catch(ConnectException e) {
-			JOptionPane.showMessageDialog(null, "Error contacting the server");
-			System.out.println("Error contacting the server");
-			System.exit(2);
-		}
+		socket = new Socket(address, serverPort);
+		System.out.println("Socket = " + socket);
 		
 		objIn = new ObjectInputStream(socket.getInputStream());
 		objOut = new ObjectOutputStream(socket.getOutputStream());
@@ -141,16 +153,18 @@ public class Client {
 		}
 		
 		frame = new JFrame();
-		panel = new JPanel();
-		southP = new JPanel();
-		ta = new JTextArea();
-		tf = new JTextField();
-		northP = new JPanel();
-		scroll = new JScrollPane(ta);
+		frame.setBounds(700, 300, 800, 600);
+		mainPanel = new JPanel();
+		southPanel = new JPanel();
+		chatTextArea = new JTextArea();
+		inputTextField = new JTextField();
+		northPanel = new JPanel();
+		scroll = new JScrollPane(chatTextArea);
 		String smiley = new String(Character.toChars(0x1F603));
-		userL = new JLabel("Username: " + smiley);
-		userL.setFont(new Font("Symbola", Font.BOLD, 20));
+		userLabel = new JLabel("Username: " + smiley);
+		userLabel.setFont(new Font("Symbola", Font.BOLD, 20));
 		userTF = new JTextField();
+		labelReconnectPanel = new JPanel();
 		
 		JPanel contentPane = (JPanel) frame.getContentPane();
 	    int condition = JComponent.WHEN_IN_FOCUSED_WINDOW;
@@ -167,60 +181,96 @@ public class Client {
 
 			@Override
 	        public void actionPerformed(ActionEvent arg0) {
-				if(!tf.getText().isEmpty()) {
+				if(!inputTextField.getText().isEmpty()) {
 					try {
-						sender.send(new Message(Message.MSG, userTF.getText(), tf.getText()));
+						sender.send(new Message(Message.MSG, userTF.getText(), inputTextField.getText()));
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-					tf.setText("");
+					inputTextField.setText("");
 				}
 	        }
 	    });
 		
-		ta.setEditable(false);
-		ta.setLineWrap(true);
+		chatTextArea.setEditable(false);
+		chatTextArea.setLineWrap(true);
 		
-		butt = new JButton("Send");
-		butt.addActionListener(new ActionListener() {
+		sendButton = new JButton("Send");
+		sendButton.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				if(!tf.getText().isEmpty()) {
+				if(!inputTextField.getText().isEmpty()) {
 					try {
-						sender.send(new Message(Message.MSG, userTF.getText(), tf.getText()));
+						sender.send(new Message(Message.MSG, userTF.getText(), inputTextField.getText()));
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-					tf.setText("");
+					inputTextField.setText("");
 				}
 			}
     		
     	});
 		
-		tf.setEditable(true);
+		reconnectButton = new JButton("Reconnect");
+		reconnectButton.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				if(isReconnecting) {
+					return;
+				}
+				isReconnecting = true;
+				printOnApp("Attempting to reconnect...");
+				System.out.println("Reconnecting...");
+				
+				new Thread() {
+					@Override
+					public void run() {
+						try {
+							connectToServer();
+							restartHelpers();
+							printOnApp("Reconnected!\n");
+						} catch (Exception e) {
+							e.printStackTrace();
+							JOptionPane.showMessageDialog(null, "Error reconnecting to the server");
+							System.out.println("Error reconnecting to the server");
+							printOnApp("Couldn't reconnect to the server, check if the server is online, or if you have the right ip address");
+						}
+						isReconnecting = false;
+					}
+				}.start();
+			}
+    		
+    	});
 		
-		southP.setLayout(new BorderLayout());
-		southP.add(tf, BorderLayout.CENTER);
-		southP.add(butt, BorderLayout.EAST);
+		inputTextField.setEditable(true);
+		
+		southPanel.setLayout(new BorderLayout());
+		southPanel.add(inputTextField, BorderLayout.CENTER);
+		southPanel.add(sendButton, BorderLayout.EAST);
 		
 		userTF.setEditable(true);
 		
-		northP.setLayout(new BorderLayout());
-		northP.add(userL, BorderLayout.NORTH);
-		northP.add(userTF, BorderLayout.CENTER);
+		labelReconnectPanel.setLayout(new BorderLayout());
+		labelReconnectPanel.add(userLabel, BorderLayout.CENTER);
+		labelReconnectPanel.add(reconnectButton, BorderLayout.EAST);
 		
-		panel.setLayout(new BorderLayout());
-		panel.add(scroll, BorderLayout.CENTER);
-		panel.add(southP, BorderLayout.SOUTH);
-		panel.add(northP, BorderLayout.NORTH);
+		northPanel.setLayout(new BorderLayout());
+		northPanel.add(labelReconnectPanel, BorderLayout.NORTH);
+		northPanel.add(userTF, BorderLayout.CENTER);
+		
+		mainPanel.setLayout(new BorderLayout());
+		mainPanel.add(scroll, BorderLayout.CENTER);
+		mainPanel.add(southPanel, BorderLayout.SOUTH);
+		mainPanel.add(northPanel, BorderLayout.NORTH);
 		
 		frame.setSize(new Dimension(500, 500));
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setResizable(true);
-		frame.getContentPane().add(panel);
+		frame.getContentPane().add(mainPanel);
 		
 		frame.setVisible(true);
 	}
@@ -268,61 +318,56 @@ public class Client {
 				System.out.println("File not found.");
 			}
 	    		
-	        try {
-	        	byte[] bytes = new byte[16*1024];
-	        	int count, total = 0;
-	        	while (total < length) {
-	        		count = inT.read(bytes);
-	        		total += count;
-	        		outT.write(bytes, 0, count);
-	        	}
+        	byte[] bytes = new byte[16*1024];
+        	int count, total = 0;
+        	while (total < length) {
+        		count = inT.read(bytes);
+        		total += count;
+        		outT.write(bytes, 0, count);
+        	}
+        	
+        	// Received the file, now preparing the next before asking for it
+        	
+        	
+        	// After preparing, send ok to ask for it and receive ok with byte number
+        	System.out.println("Received the file, sending ok");
+        	objOut.writeObject(new Message(Message.OK));
+        	
+        	System.out.println("Waiting for ok");
+	    	ok = (Message)objIn.readObject();
+	    	while(ok.getFunction() != Message.OK && ok.getFunction() != Message.DENIED) {
+	    		ok = (Message)objIn.readObject();
+	    	}
+	    	if(ok.getFunction() == Message.DENIED) {
+	    		JOptionPane.showMessageDialog(null, "Error getting all files from server");
+				System.out.println("Error getting all files from server");
+				System.exit(2);
+	    	}
+	    	
+	    	myFile = new File(System.getenv("APPDATA") + "/tittiesChat/" + ok.getMessage());
+        	try {
+        		outT = new FileOutputStream(myFile);
+        	} catch (FileNotFoundException ex) {
+        		System.out.println("File not found. ");
+        	}
+        	bytes = new byte[16 * 1024];
+	    	
+	    	// Receiving the second file
+	    	length = ok.getByteNum();
+	    	System.out.println("length=" + length);
+	    	System.out.println("Received ok, gonna receive the file");
+        	total = 0;
+        	while (total < length) {
+        		count = inT.read(bytes);
+        		total += count;
+        		outT.write(bytes, 0, count);
+        	}
+        	
+        	// received both files, sending ok and moving on
+        	System.out.println("Received the file, sending ok");
+        	objOut.writeObject(new Message(Message.OK));
 	        	
-	        	// Received the file, now preparing the next before asking for it
-	        	
-	        	
-	        	// After preparing, send ok to ask for it and receive ok with byte number
-	        	System.out.println("Received the file, sending ok");
-	        	objOut.writeObject(new Message(Message.OK));
-	        	
-	        	System.out.println("Waiting for ok");
-		    	ok = (Message)objIn.readObject();
-		    	while(ok.getFunction() != Message.OK && ok.getFunction() != Message.DENIED) {
-		    		ok = (Message)objIn.readObject();
-		    	}
-		    	if(ok.getFunction() == Message.DENIED) {
-		    		JOptionPane.showMessageDialog(null, "Error getting all files from server");
-					System.out.println("Error getting all files from server");
-					System.exit(2);
-		    	}
-		    	
-		    	myFile = new File(System.getenv("APPDATA") + "/tittiesChat/" + ok.getMessage());
-	        	try {
-	        		outT = new FileOutputStream(myFile);
-	        	} catch (FileNotFoundException ex) {
-	        		System.out.println("File not found. ");
-	        	}
-	        	bytes = new byte[16 * 1024];
-		    	
-		    	// Receiving the second file
-		    	length = ok.getByteNum();
-		    	System.out.println("length=" + length);
-		    	System.out.println("Received ok, gonna receive the file");
-	        	total = 0;
-	        	while (total < length) {
-	        		count = inT.read(bytes);
-	        		total += count;
-	        		outT.write(bytes, 0, count);
-	        	}
-	        	
-	        	// received both files, sending ok and moving on
-	        	System.out.println("Received the file, sending ok");
-	        	objOut.writeObject(new Message(Message.OK));
-	        	
-	        	
-	        } catch(IOException e) {
-	        	e.printStackTrace();
-	        }
-			
+
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -343,7 +388,7 @@ public class Client {
 	}
 	
 	public void setText(String str) {
-		ta.setText(str);
+		chatTextArea.setText(str);
 	}
 	
 	public Socket getSocket() {

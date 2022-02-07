@@ -18,15 +18,11 @@ public class Receiver extends Thread {
 	}
 	
 	public void run() {
-		try {
-			receiveMessages();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		receiveMessages();
 	}
 	
 	
-	private void receiveMessages() throws IOException {
+	private void receiveMessages() {
 		try {
 			while(true) {
 				Message msg = (Message)in.readObject();
@@ -38,13 +34,23 @@ public class Receiver extends Thread {
 				}
 			}
 		} catch(SocketException e) {
-			client.getSocket().close();
+			try {
+				client.getSocket().close();
+			} catch (Exception e2) {
+				e.printStackTrace();
+			}
 			client.setText("An error occurred with the connection to the server");
 		} catch (ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (IOException e) {
+			
 		}
-		
-		
+		System.out.println("Receiver finished");
 	}
+	
+	public void closeObjIn() throws IOException {
+		in.close();
+	}
+	
 }

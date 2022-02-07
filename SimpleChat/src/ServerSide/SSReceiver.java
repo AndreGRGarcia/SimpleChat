@@ -54,7 +54,7 @@ public class SSReceiver extends Thread {
 			for(;;) {
 				System.out.println("SSReceiver waiting for messages");
 				Message msg = (Message)in.readObject();
-				System.out.println("SSReceiver " + getIdd() + ": " + msg.getFunction());
+				System.out.println("SSReceiver " + getIdd() + " request: func " + msg.getFunction());
 				if(msg.getFunction() == Message.SEND_SOUND_FILES) {
 					System.out.println("Message was send files");
 					sendSoundFiles();
