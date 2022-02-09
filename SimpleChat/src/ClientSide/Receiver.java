@@ -30,7 +30,7 @@ public class Receiver extends Thread {
 					if(!client.frameIsActive()) {
 						Sounds.playSound("notification");
 					}
-					client.printOnApp(msg.getSender() + ": " + msg.getMessage());
+					client.printOnApp(msg.getSender() + ": " + msg.getMessage(), false);
 				}
 			}
 		} catch(SocketException e) {
@@ -39,7 +39,8 @@ public class Receiver extends Thread {
 			} catch (Exception e2) {
 				e.printStackTrace();
 			}
-			client.setText("An error occurred with the connection to the server");
+			//client.setText("An error occurred with the connection to the server");
+			client.printOnApp("\nAn error occurred with the connection to the server", true);
 		} catch (ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

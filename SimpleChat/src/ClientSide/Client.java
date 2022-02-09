@@ -1,8 +1,10 @@
 package ClientSide;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -14,7 +16,6 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
 
@@ -29,9 +30,16 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultCaret;
+import javax.swing.text.Document;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
 
 import Utils.FileChecking;
 import Utils.Message;
@@ -52,7 +60,8 @@ public class Client {
 	private JPanel labelReconnectPanel;
 	private JLabel userLabel;
 	private JTextField userTF;
-	private JTextArea chatTextArea;
+	private JTextPane chatTextPane;
+	private SimpleAttributeSet attributeSet;
 	private JTextField inputTextField;
 	private JButton sendButton;
 	private JButton reconnectButton;
@@ -75,13 +84,14 @@ public class Client {
 	public void runClient() {
 		if(socket == null) {
 			try {
-				printOnApp("Connecting to the server...");
+				printOnApp("Connecting to the server...", true);
 				connectToServer();
-				runHelpers();	
+				runHelpers();
+				printOnApp("Connected!\n", true);
 			} catch(IOException e) {
 				JOptionPane.showMessageDialog(null, "Error connecting to the server");
 				System.out.println("Error contacting the server");
-				printOnApp("Couldn't connect to the server");
+				printOnApp("Couldn't connect to the server", true);
 			}	
 		}
 	}
@@ -103,10 +113,36 @@ public class Client {
 		receiver.start();
 	}
 	
-	public void printOnApp(String msg) {
-		chatTextArea.setText(chatTextArea.getText() + msg + '\n');
-		scrollDown();
+	public void printOnApp(String msg, boolean isServerMsg) {
+		Color color = isServerMsg ? Color.RED : Color.BLACK;
+		StyleConstants.setForeground(attributeSet, color);  
+		Document doc = chatTextPane.getStyledDocument();  
+        try {
+			doc.insertString(doc.getLength(), msg + "\n", attributeSet);
+		} catch (BadLocationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
+//		chatTextArea.setText(chatTextArea.getText() + msg + '\n'); 
+//		Color color = isServerMsg ? Color.RED : Color.BLACK;
+//		appendToPane(chatTextArea, msg + "\n", color);
+//		scrollDown();
 	}
+	
+	private void appendToPane(JTextPane tp, String msg, Color c)
+    {
+        StyleContext sc = StyleContext.getDefaultStyleContext();
+        AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
+
+        aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Lucida Console");
+        aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
+
+        int len = tp.getDocument().getLength();
+        tp.setCaretPosition(len);
+        tp.setCharacterAttributes(aset, false);
+        tp.replaceSelection(msg);
+    }
 	
 //	private void sendMessages() throws IOException {
 //		Scanner s = new Scanner(System.in);
@@ -156,15 +192,21 @@ public class Client {
 		frame.setBounds(700, 300, 800, 600);
 		mainPanel = new JPanel();
 		southPanel = new JPanel();
-		chatTextArea = new JTextArea();
+		chatTextPane = new JTextPane();
+		attributeSet = new SimpleAttributeSet();  
+		chatTextPane.setCharacterAttributes(attributeSet, true);  
+		chatTextPane.setText("");		
 		inputTextField = new JTextField();
 		northPanel = new JPanel();
-		scroll = new JScrollPane(chatTextArea);
+		scroll = new JScrollPane(chatTextPane);
 		String smiley = new String(Character.toChars(0x1F603));
 		userLabel = new JLabel("Username: " + smiley);
 		userLabel.setFont(new Font("Symbola", Font.BOLD, 20));
 		userTF = new JTextField();
 		labelReconnectPanel = new JPanel();
+		
+		DefaultCaret caret = (DefaultCaret)chatTextPane.getCaret();
+		caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 		
 		JPanel contentPane = (JPanel) frame.getContentPane();
 	    int condition = JComponent.WHEN_IN_FOCUSED_WINDOW;
@@ -193,8 +235,9 @@ public class Client {
 	        }
 	    });
 		
-		chatTextArea.setEditable(false);
-		chatTextArea.setLineWrap(true);
+		chatTextPane.setEditable(false);
+		chatTextPane.setMargin(new Insets(5, 5, 5, 5));
+		//chatTextArea.setLineWrap(true);
 		
 		sendButton = new JButton("Send");
 		sendButton.addActionListener(new ActionListener() {
@@ -204,11 +247,9 @@ public class Client {
 				if(!inputTextField.getText().isEmpty()) {
 					try {
 						sender.send(new Message(Message.MSG, userTF.getText(), inputTextField.getText()));
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					inputTextField.setText("");
+						inputTextField.setText("");
+						//scrollDown();
+					} catch (IOException e) {}
 				}
 			}
     		
@@ -223,7 +264,7 @@ public class Client {
 					return;
 				}
 				isReconnecting = true;
-				printOnApp("Attempting to reconnect...");
+				printOnApp("Attempting to reconnect...", true);
 				System.out.println("Reconnecting...");
 				
 				new Thread() {
@@ -232,12 +273,16 @@ public class Client {
 						try {
 							connectToServer();
 							restartHelpers();
-							printOnApp("Reconnected!\n");
+							printOnApp("Reconnected!\n", true);
+							System.out.println(chatTextPane.getText());
+							
+							DefaultCaret caret = (DefaultCaret)chatTextPane.getCaret();
+							caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 						} catch (Exception e) {
 							e.printStackTrace();
 							JOptionPane.showMessageDialog(null, "Error reconnecting to the server");
 							System.out.println("Error reconnecting to the server");
-							printOnApp("Couldn't reconnect to the server, check if the server is online, or if you have the right ip address");
+							printOnApp("Couldn't reconnect to the server, check if the server is online, or if you have the right ip address", true);
 						}
 						isReconnecting = false;
 					}
@@ -384,11 +429,11 @@ public class Client {
 	
 	public void scrollDown() {
 		 JScrollBar sb = scroll.getVerticalScrollBar();
-		 sb.setValue( sb.getMaximum() );
+		 sb.setValue(sb.getMaximum());
 	}
 	
 	public void setText(String str) {
-		chatTextArea.setText(str);
+		chatTextPane.setText(str);
 	}
 	
 	public Socket getSocket() {
